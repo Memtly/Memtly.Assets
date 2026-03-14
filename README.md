@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="Other/Memtly%20Icon%20(Other).png" style="width: 20%;" />
+  <img src="Other/Memtly%20Icon%20(Other).png" style="width: 15%;" />
   
   <h1>Memtly.Assets</h1>
   <p style="font-size: 11pt;">
