@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WeddingShare → Memtly.Community</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #7d8590;
+      --blue:     #58a6ff;
+      --green:    #3fb950;
+      --mono:     'JetBrains Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a, a:hover, a:focus, a:visited { text-decoration: none; }
+
+    /* ── Navbar ── */
+    .nav {
+      height: 62px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 16px;
+    }
+
+    .nav img { width: 40px; }
+
+    .nav .title { font-size: 30px; font-weight: 400; margin: -3px 0px 0px; }
+
+    /* ── Page ── */
+    .page {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 100%;
+      max-width: 900px;
+      overflow: hidden;
+    }
+
+    /* Yellow notice bar like GitHub's repo-moved banner */
+    .notice-bar {
+      background: #272115;
+      border-bottom: 1px solid #624a1e;
+      padding: 10px 20px;
+      font-size: 13px;
+      color: #e3b341;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-body {
+      padding: 32px;
+    }
+
+    /* Repo path display */
+    .repo-path {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .repo-path .old { text-decoration: line-through; color: var(--muted); }
+    .repo-path .new { color: var(--blue); }
+    .repo-path .arrow { color: var(--muted); }
+
+    /* Main heading */
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+
+    h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 5px;
+      line-height: 1.3;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    /* Divider */
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+
+    /* Info rows */
+    .info-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 8px 0;
+      font-size: 13px;
+      color: var(--muted);
+      border-bottom: 1px solid #21262d;
+    }
+    .info-row:last-of-type { border-bottom: none; margin-bottom: 0; }
+
+    .info-row .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .info-row .dot.warn { background: #e3b341; }
+    .info-row .dot.error { background: #ff5050; }
+
+    /* Buttons */
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      border: 1px solid;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+
+    .btn-primary {
+      background: #238636;
+      border-color: rgba(240,246,252,0.1);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <img src="https://raw.githubusercontent.com/Cirx08/WeddingShare/main/logo.png">
+    <span class="title">WeddingShare</span>
+  </nav>
+
+  <div class="page">
+    <div class="card">
+
+      <div class="notice-bar">
+        This site and repository has moved.
+      </div>
+
+      <div class="card-body">
+
+        <div class="repo-path">
+          <span class="old">Cirx08/WeddingShare</span>
+          <span class="arrow">→</span>
+          <span class="new">Memtly/Memtly.Community</span>
+        </div>
+
+        <hr />
+
+        <h1>WeddingShare is now Memtly.Community</h1>
+        <p class="sub">We've rebranded. The project, community, and codebase have all moved to a new home under the Memtly organisation.</p>
+
+        <hr />
+
+
+        <div class="info-row"><div class="dot error"></div>Memtly.Community is not directly upgradable. Please visit the <a href="https://docs.memtly.com/docs/Migration/instructions"><code style="font-family:var(--mono);color:var(--blue)">Migration Guide</code></a> for more information</div>
+        <div class="info-row"><div class="dot"></div>All open issues have been transferred to the new Memtly.Community repository</div>
+        <div class="info-row"><div class="dot"></div>Documentation has been set up to reflect the changes</div>
+        <div class="info-row"><div class="dot warn"></div>The GitHub Sponsors link has changed - <a href="https://github.com/sponsors/Memtly"><code style="font-family:var(--mono);color:var(--blue)">https://github.com/sponsors/Memtly</code></a></div>
+        <div class="info-row"><div class="dot warn"></div>The BuyMeACoffee link has changed - <a href="https://buymeacoffee.com/memtly"><code style="font-family:var(--mono);color:var(--blue)">https://buymeacoffee.com/memtly</code></a></div>
+
+        <hr />
+
+        <h4>Why rebrand to Memtly?</h4>
+        <p class="sub">As more and more people started using <strong>WeddingShare</strong> we quickly realised that people were using it for more than just weddings. We've seen concerts, friend trips, and a whole host of other events. It only felt right that we rebrand to something more "generic" to cover all bases and reduce confusion when inevitably someone recommends it to a friend and their response is "but I'm not getting married". That's where <strong>Memtly</strong> comes in... Now along with the improved look, we also have an improved name.</p>
+
+        <hr />
+
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/Memtly/Memtly.Community">Go to Memtly.Community →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
