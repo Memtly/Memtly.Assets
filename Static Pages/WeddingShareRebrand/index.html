@@ -111,6 +111,11 @@
       line-height: 1.3;
     }
 
+    .logo {
+      width: 100px;
+      margin: 0px 0px 10px;
+    }
+
     .sub {
       color: var(--muted);
       font-size: 14px;
@@ -126,6 +131,8 @@
     }
 
     /* Info rows */
+    .info-center { text-align: center; }
+
     .info-row {
       display: flex;
       align-items: flex-start;
@@ -150,6 +157,7 @@
     /* Buttons */
     .actions {
       display: flex;
+      justify-content: center;
       gap: 8px;
       margin-top: 24px;
     }
@@ -157,7 +165,7 @@
     .btn {
       display: inline-flex;
       align-items: center;
-      padding: 6px 16px;
+      padding: 10px 16px;
       border-radius: 6px;
       font-size: 14px;
       font-weight: 500;
@@ -204,11 +212,13 @@
 
         <hr />
 
-        <h1>WeddingShare is now Memtly.Community</h1>
-        <p class="sub">We've rebranded. The project, community, and codebase have all moved to a new home under the Memtly organisation.</p>
+        <div class="info-center">
+          <img class="logo" src="https://raw.githubusercontent.com/Memtly/Memtly.Assets/master/Logos/Community/Memtly_Small.png">
+          <h1>WeddingShare is now Memtly.Community</h1>
+          <p class="sub">We've rebranded. The project, community, and codebase have all moved to a new home under the Memtly organisation.</p>
+        </div>
 
         <hr />
-
 
         <div class="info-row"><div class="dot error"></div>Memtly.Community is not directly upgradable. Please visit the <a href="https://docs.memtly.com/docs/Migration/instructions"><code style="font-family:var(--mono);color:var(--blue)">Migration Guide</code></a> for more information</div>
         <div class="info-row"><div class="dot"></div>All open issues have been transferred to the new Memtly.Community repository</div>
