@@ -9,6 +9,11 @@
 
 ## Gallery
 
+###### Gallery Login
+<p style="font-size: 10px; font-weight: 1;">If no secret key was included in the link the guest will be prompted to login to the gallery</small>
+
+![Screenshot](https://raw.githubusercontent.com/Memtly/Memtly.Assets/master/Screenshots/Community/Desktop/Light/Gallery_Login.png)
+
 ###### Default Layout
 <p style="font-size: 10px; font-weight: 1;">Here users can view and upload media to the gallery</small>
 
