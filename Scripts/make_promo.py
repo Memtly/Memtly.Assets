@@ -47,7 +47,6 @@ def rounded_mask(size, radius):
     d.rounded_rectangle([0, 0, size[0] - 1, size[1] - 1], radius=radius, fill=255)
     return mask
 
-
 def bordered_paste(canvas, img, pos, radius):
     """Paste img onto canvas at pos with a thin sharp border, no shadow."""
     x, y = pos
