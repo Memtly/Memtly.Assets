@@ -7,6 +7,10 @@ on:
       - "Screenshots/Community/Desktop/Light/Gallery_Default.png"
       - "Screenshots/Community/Mobile/Light/Gallery_Default.png"
       - "Scripts/make_promo.py"
+      - ".github/workflows/generate_promo.yml"
+
+permissions:
+  contents: write
 
 jobs:
   build-promo:
