@@ -33,7 +33,6 @@ MOBILE_RADIUS = 3              # no chrome/bezel — just the screenshot
 MARGIN = 20       # outer margin
 GUTTER = 10        # space between the two images
 
-
 def load_image(source: str) -> Image.Image:
     if source.startswith("http://") or source.startswith("https://"):
         with urllib.request.urlopen(source) as resp:
