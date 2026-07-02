@@ -1,37 +1,41 @@
 #!/usr/bin/env python3
 """
-make_promo.py — Composite a desktop + mobile screenshot into a single promo image.
+make_promo.py — Composite two or more screenshots side-by-side into a single promo image.
+
+All images are scaled to a common height so they line up neatly, placed left to
+right in the order given, and surrounded by a border equal to the gap between
+images. You specify the input images and the desired output width; the output
+height is calculated automatically to fit everything.
 
 Usage:
-    python3 make_promo.py <desktop_image> <mobile_image> [output_path]
+    python3 make_promo.py <image1> <image2> [<image3> ...] [options]
+
+Options:
+    -o, --output PATH     Output file path (default: promo.png)
+    -w, --width INT       Total output width in pixels (default: 1790)
+    -g, --gap INT         Gap between images, and border around the whole
+                           composite (default: 20)
+    -r, --radius INT      Corner radius applied to each image (default: 3)
+    --bg-color HEX        Background color, e.g. "f3f4f7" (default: f3f4f7)
+    --border-color HEX    Per-image border color, e.g. "d2d5db" (default: d2d5db)
 
 Examples:
-    python3 make_promo.py desktop.png mobile.png promo.png
-    python3 make_promo.py https://raw.githubusercontent.com/.../Desktop/Light/Gallery_Default.png \
-                          https://raw.githubusercontent.com/.../Mobile/Light/Gallery_Default.png \
-                          Screenshots/Community/promo.png
+    python3 make_promo.py mobile.png desktop.png promo.png -w 1790
 
-Accepts local file paths or http(s) URLs for the two input images.
+    python3 make_promo.py Mobile/Light/Gallery_Default.png \
+                          Tablet/Light/Gallery_Default.png \
+                          Desktop/Light/Gallery_Default.png \
+                          -o Screenshots/Community/Promo_Light.png -w 2200 -g 16
+
+Accepts local file paths or http(s) URLs for any input image.
 """
 
+import argparse
 import sys
 import urllib.request
 from io import BytesIO
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
-W, H = 1790, 800
-BG_COLOR = (243, 244, 247)     # neutral light gray
-BORDER_COLOR = (210, 213, 219) # thin sharp border, no shadow
-ACCENT_COLOR = (37, 99, 235)   # brand blue accent line
-
-DESKTOP_WIDTH = 1400
-DESKTOP_RADIUS = 3             # sharp, near-square corners
-
-MOBILE_WIDTH = 390
-MOBILE_RADIUS = 3              # no chrome/bezel — just the screenshot
-
-MARGIN = 20       # outer margin
-GUTTER = 10        # space between the two images
 
 def load_image(source: str) -> Image.Image:
     if source.startswith("http://") or source.startswith("https://"):
@@ -41,65 +45,128 @@ def load_image(source: str) -> Image.Image:
     return Image.open(source).convert("RGBA")
 
 
+def hex_color(s: str):
+    s = s.lstrip("#")
+    if len(s) == 3:
+        s = "".join(c * 2 for c in s)
+    return tuple(int(s[i:i + 2], 16) for i in (0, 2, 4))
+
+
 def rounded_mask(size, radius):
     mask = Image.new("L", size, 0)
     d = ImageDraw.Draw(mask)
     d.rounded_rectangle([0, 0, size[0] - 1, size[1] - 1], radius=radius, fill=255)
     return mask
 
-def bordered_paste(canvas, img, pos, radius):
+
+def bordered_paste(canvas, img, pos, radius, border_color):
     """Paste img onto canvas at pos with a thin sharp border, no shadow."""
     x, y = pos
     w, h = img.size
     canvas.paste(img, (x, y), rounded_mask(img.size, radius))
     bd = ImageDraw.Draw(canvas)
-    bd.rounded_rectangle([x, y, x + w - 1, y + h - 1], radius=radius, outline=BORDER_COLOR, width=1)
+    bd.rounded_rectangle([x, y, x + w - 1, y + h - 1], radius=radius, outline=border_color, width=1)
 
 
-def make_promo(desktop_src: str, mobile_src: str, output_path: str):
-    canvas = Image.new("RGBA", (W, H), BG_COLOR + (255,))
+def make_promo(
+    sources,
+    output_path,
+    out_width,
+    gap,
+    radius,
+    bg_color,
+    border_color,
+):
+    if len(sources) < 2:
+        raise ValueError("Need at least 2 input images")
 
-    # Desktop screenshot
-    desktop = load_image(desktop_src)
-    desktop_h = int(desktop.height * (DESKTOP_WIDTH / desktop.width))
-    desktop = desktop.resize((DESKTOP_WIDTH, desktop_h), Image.LANCZOS)
+    images = [load_image(s) for s in sources]
+    aspect_ratios = [img.width / img.height for img in images]
 
-    # Mobile screenshot — cap its height to roughly match the desktop image
-    # so the pair reads as one balanced row, not two mismatched blocks.
-    mobile_raw = load_image(mobile_src)
-    mobile_h = min(desktop_h, int(mobile_raw.height * (MOBILE_WIDTH / mobile_raw.width)))
-    mobile_w = int(MOBILE_WIDTH * (mobile_h / (mobile_raw.height * (MOBILE_WIDTH / mobile_raw.width))))
-    mobile = mobile_raw.resize(
-        (int(mobile_raw.width * (mobile_h / mobile_raw.height)), mobile_h), Image.LANCZOS
-    )
-    if mobile.width > MOBILE_WIDTH:
-        mobile = mobile.crop((0, 0, MOBILE_WIDTH, mobile_h))
+    n = len(images)
+    margin = gap  # border around the composite matches the gap between images
 
-    total_w = DESKTOP_WIDTH + GUTTER + mobile.width
-    start_x = (W - total_w) // 2
-    row_h = max(desktop_h, mobile.height)
-    start_y = (H - row_h) // 2
+    # Solve for the common height H such that:
+    #   sum(ar_i * H) + (n-1)*gap + 2*margin == out_width
+    available_width = out_width - (n - 1) * gap - 2 * margin
+    if available_width <= 0:
+        raise ValueError("Output width is too small for the given gap/margin")
 
-    dx, dy = start_x, start_y + (row_h - desktop_h) // 2
-    mx, my = start_x + DESKTOP_WIDTH + GUTTER, start_y + (row_h - mobile.height) // 2
+    row_h = int(available_width / sum(aspect_ratios))
+    if row_h <= 0:
+        raise ValueError("Computed row height is <= 0; increase --width")
 
-    bordered_paste(canvas, desktop, (dx, dy), DESKTOP_RADIUS)
-    bordered_paste(canvas, mobile, (mx, my), MOBILE_RADIUS)
+    resized = []
+    for img, ar in zip(images, aspect_ratios):
+        w = round(ar * row_h)
+        resized.append(img.resize((w, row_h), Image.LANCZOS))
 
-    # Thin accent line beneath both images ties them together as one unit
-    line_y = start_y + row_h + 24
-    draw = ImageDraw.Draw(canvas)
-    draw.rectangle([start_x, line_y, start_x + total_w, line_y + 3], fill=ACCENT_COLOR)
+    # Recompute actual total width from rounded per-image widths so the
+    # layout is pixel-exact (avoids drift from rounding each width).
+    total_content_w = sum(im.width for im in resized) + (n - 1) * gap
+    out_w = total_content_w + 2 * margin
+    out_h = row_h + 2 * margin
+
+    canvas = Image.new("RGBA", (out_w, out_h), bg_color + (255,))
+
+    x = margin
+    y = margin
+    for im in resized:
+        bordered_paste(canvas, im, (x, y), radius, border_color)
+        x += im.width + gap
 
     canvas.convert("RGB").save(output_path, quality=95)
-    print(f"Saved {output_path}")
+    print(f"Saved {output_path} ({out_w}x{out_h}, row height {row_h}px)")
+
+
+def parse_args():
+    p = argparse.ArgumentParser(
+        description="Composite two or more screenshots side-by-side into a single promo image.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument("images", nargs="+", help="Input images (paths or URLs), left to right")
+    p.add_argument("-o", "--output", default="promo.png", help="Output file path")
+    p.add_argument("-w", "--width", type=int, default=1790, help="Total output width in pixels")
+    p.add_argument("-g", "--gap", type=int, default=20, help="Gap between images / border width")
+    p.add_argument("-r", "--radius", type=int, default=3, help="Corner radius per image")
+    p.add_argument("--bg-color", default="f3f4f7", help="Background color (hex)")
+    p.add_argument("--border-color", default="d2d5db", help="Per-image border color (hex)")
+    return p.parse_args()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
+    args = parse_args()
+
+    # If the last positional arg looks like an output path (not an existing file
+    # or URL) and no -o was explicitly used, keep backward-compatible behavior
+    # of treating a trailing plain filename as the output.
+    images = args.images
+    output = args.output
+    if output == "promo.png" and len(images) >= 3:
+        last = images[-1]
+        looks_like_output = (
+            not last.startswith("http://")
+            and not last.startswith("https://")
+            and not __import__("os").path.exists(last)
+        )
+        if looks_like_output:
+            output = images.pop()
+
+    if len(images) < 2:
+        print("Error: need at least 2 input images.\n", file=sys.stderr)
         print(__doc__)
         sys.exit(1)
-    desktop_src = sys.argv[1]
-    mobile_src = sys.argv[2]
-    output_path = sys.argv[3] if len(sys.argv) > 3 else "promo.png"
-    make_promo(desktop_src, mobile_src, output_path)
+
+    try:
+        make_promo(
+            sources=images,
+            output_path=output,
+            out_width=args.width,
+            gap=args.gap,
+            radius=args.radius,
+            bg_color=hex_color(args.bg_color),
+            border_color=hex_color(args.border_color),
+        )
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
