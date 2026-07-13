@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-make_promo.py — Composite two or more screenshots side-by-side into a single promo image.
+make_promo.py — Composite two or more screenshots into a single promo image.
 
-All images are scaled to a common height so they line up neatly, placed left to
-right in the order given, and surrounded by a border equal to the gap between
-images. You specify the input images and the desired output width; the output
-height is calculated automatically to fit everything.
+Images can be arranged left-to-right, right-to-left, top-to-bottom, or
+bottom-to-top. For horizontal directions, all images are scaled to a common
+height so they line up neatly; for vertical directions, all images are scaled
+to a common width. Images are separated by a gap equal to the border around
+the whole composite. You specify the input images and the desired output
+width; the other output dimension is calculated automatically to fit
+everything.
 
 Usage:
     python3 make_promo.py <image1> <image2> [<image3> ...] [options]
@@ -13,11 +16,18 @@ Usage:
 Options:
     -o, --output PATH     Output file path (default: promo.png)
     -w, --width INT       Total output width in pixels (default: 1790)
+                           For vertical directions (ttb/btt) this is the
+                           fixed output width; height is computed to fit.
     -g, --gap INT         Gap between images, and border around the whole
                            composite (default: 20)
     -r, --radius INT      Corner radius applied to each image (default: 3)
     --bg-color HEX        Background color, e.g. "f3f4f7" (default: f3f4f7)
     --border-color HEX    Per-image border color, e.g. "d2d5db" (default: d2d5db)
+    -d, --direction DIR   Layout direction. One of:
+                             ltr, left-to-right   (default)
+                             rtl, right-to-left
+                             ttb, top-to-bottom, up-to-down
+                             btt, bottom-to-top, down-to-up
 
 Examples:
     python3 make_promo.py mobile.png desktop.png promo.png -w 1790
@@ -27,6 +37,9 @@ Examples:
                           Desktop/Light/Gallery_Default.png \
                           -o Screenshots/Community/Promo_Light.png -w 2200 -g 16
 
+    python3 make_promo.py step1.png step2.png step3.png \
+                          -o Flow.png -w 900 --direction top-to-bottom
+
 Accepts local file paths or http(s) URLs for any input image.
 """
 
@@ -35,6 +48,33 @@ import sys
 import urllib.request
 from io import BytesIO
 from PIL import Image, ImageDraw
+
+
+DIRECTION_ALIASES = {
+    "ltr": "ltr",
+    "left-to-right": "ltr",
+    "rtl": "rtl",
+    "right-to-left": "rtl",
+    "ttb": "ttb",
+    "top-to-bottom": "ttb",
+    "up-to-down": "ttb",
+    "utd": "ttb",
+    "btt": "btt",
+    "bottom-to-top": "btt",
+    "down-to-up": "btt",
+    "dtu": "btt",
+}
+
+
+def normalize_direction(value: str) -> str:
+    key = value.strip().lower()
+    if key not in DIRECTION_ALIASES:
+        raise argparse.ArgumentTypeError(
+            f"Unknown direction '{value}'. Choose one of: "
+            "ltr/left-to-right, rtl/right-to-left, "
+            "ttb/top-to-bottom/up-to-down, btt/bottom-to-top/down-to-up"
+        )
+    return DIRECTION_ALIASES[key]
 
 
 def load_image(source: str) -> Image.Image:
@@ -76,61 +116,108 @@ def make_promo(
     radius,
     bg_color,
     border_color,
+    direction="ltr",
 ):
     if len(sources) < 2:
         raise ValueError("Need at least 2 input images")
 
     images = [load_image(s) for s in sources]
-    aspect_ratios = [img.width / img.height for img in images]
-
     n = len(images)
     margin = gap  # border around the composite matches the gap between images
+    horizontal = direction in ("ltr", "rtl")
 
-    # Solve for the common height H such that:
-    #   sum(ar_i * H) + (n-1)*gap + 2*margin == out_width
-    available_width = out_width - (n - 1) * gap - 2 * margin
-    if available_width <= 0:
-        raise ValueError("Output width is too small for the given gap/margin")
+    if horizontal:
+        # All images share a common height; laid out left to right (or
+        # reversed for right-to-left). Output width is fixed as requested;
+        # height is derived.
+        aspect_ratios = [img.width / img.height for img in images]
 
-    row_h = int(available_width / sum(aspect_ratios))
-    if row_h <= 0:
-        raise ValueError("Computed row height is <= 0; increase --width")
+        available_width = out_width - (n - 1) * gap - 2 * margin
+        if available_width <= 0:
+            raise ValueError("Output width is too small for the given gap/margin")
 
-    resized = []
-    for img, ar in zip(images, aspect_ratios):
-        w = round(ar * row_h)
-        resized.append(img.resize((w, row_h), Image.LANCZOS))
+        row_h = int(available_width / sum(aspect_ratios))
+        if row_h <= 0:
+            raise ValueError("Computed row height is <= 0; increase --width")
 
-    # Recompute actual total width from rounded per-image widths so the
-    # layout is pixel-exact (avoids drift from rounding each width).
-    total_content_w = sum(im.width for im in resized) + (n - 1) * gap
-    out_w = total_content_w + 2 * margin
-    out_h = row_h + 2 * margin
+        resized = []
+        for img, ar in zip(images, aspect_ratios):
+            w = round(ar * row_h)
+            resized.append(img.resize((w, row_h), Image.LANCZOS))
 
-    canvas = Image.new("RGBA", (out_w, out_h), bg_color + (255,))
+        if direction == "rtl":
+            resized = list(reversed(resized))
 
-    x = margin
-    y = margin
-    for im in resized:
-        bordered_paste(canvas, im, (x, y), radius, border_color)
-        x += im.width + gap
+        # Recompute actual total width from rounded per-image widths so the
+        # layout is pixel-exact (avoids drift from rounding each width).
+        total_content_w = sum(im.width for im in resized) + (n - 1) * gap
+        out_w = total_content_w + 2 * margin
+        out_h = row_h + 2 * margin
+
+        canvas = Image.new("RGBA", (out_w, out_h), bg_color + (255,))
+
+        x = margin
+        y = margin
+        for im in resized:
+            bordered_paste(canvas, im, (x, y), radius, border_color)
+            x += im.width + gap
+
+    else:
+        # All images share a common width (the requested output width, minus
+        # margins); laid out top to bottom (or reversed for bottom-to-top).
+        # Output width is fixed exactly as requested; height is derived.
+        common_w = out_width - 2 * margin
+        if common_w <= 0:
+            raise ValueError("Output width is too small for the given gap/margin")
+
+        resized = []
+        for img in images:
+            ar = img.width / img.height
+            h = round(common_w / ar)
+            if h <= 0:
+                raise ValueError("Computed image height is <= 0; increase --width")
+            resized.append(img.resize((common_w, h), Image.LANCZOS))
+
+        if direction == "btt":
+            resized = list(reversed(resized))
+
+        total_content_h = sum(im.height for im in resized) + (n - 1) * gap
+        out_w = out_width
+        out_h = total_content_h + 2 * margin
+
+        canvas = Image.new("RGBA", (out_w, out_h), bg_color + (255,))
+
+        x = margin
+        y = margin
+        for im in resized:
+            bordered_paste(canvas, im, (x, y), radius, border_color)
+            y += im.height + gap
 
     canvas.convert("RGB").save(output_path, quality=95)
-    print(f"Saved {output_path} ({out_w}x{out_h}, row height {row_h}px)")
+    print(f"Saved {output_path} ({out_w}x{out_h}, direction={direction})")
 
 
 def parse_args():
     p = argparse.ArgumentParser(
-        description="Composite two or more screenshots side-by-side into a single promo image.",
+        description="Composite two or more screenshots into a single promo image.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("images", nargs="+", help="Input images (paths or URLs), left to right")
+    p.add_argument("images", nargs="+", help="Input images (paths or URLs), in layout order")
     p.add_argument("-o", "--output", default="promo.png", help="Output file path")
     p.add_argument("-w", "--width", type=int, default=1790, help="Total output width in pixels")
     p.add_argument("-g", "--gap", type=int, default=20, help="Gap between images / border width")
     p.add_argument("-r", "--radius", type=int, default=3, help="Corner radius per image")
     p.add_argument("--bg-color", default="f3f4f7", help="Background color (hex)")
     p.add_argument("--border-color", default="d2d5db", help="Per-image border color (hex)")
+    p.add_argument(
+        "-d", "--direction",
+        type=normalize_direction,
+        default="ltr",
+        help=(
+            "Layout direction: ltr/left-to-right (default), rtl/right-to-left, "
+            "ttb/top-to-bottom/up-to-down, btt/bottom-to-top/down-to-up"
+        ),
+    )
     return p.parse_args()
 
 
@@ -166,6 +253,7 @@ if __name__ == "__main__":
             radius=args.radius,
             bg_color=hex_color(args.bg_color),
             border_color=hex_color(args.border_color),
+            direction=args.direction,
         )
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
